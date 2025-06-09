@@ -7,6 +7,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import filters, Application, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler
 from exchangerate.exchange_rate import commonCurrencies
 from exchangerate.exchange_rate import moreCurrencies
+from exchangerate.exchange_rate import getRates
 
 
 
@@ -34,7 +35,7 @@ async def rates(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     # await tells program to stop and wait for function call to finish
-    await update.message.reply_text("Please Choose", reply_markup=reply_markup)
+    await update.message.reply_text("Choose Base Currency", reply_markup=reply_markup)
 
 
 # buttons handler of the keyboard
@@ -49,26 +50,47 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # edits the message where CallbackQuery comes from, then inserts data defined in keyboard
     # pass the inline keyboard again only with reply_markup
-    await query.edit_message_text(text=f"You have chosen {query.data}", reply_markup=InlineKeyboardMarkup([InlineKeyboardButton("rates", callback_data="rates")]))
+    # await query.edit_message_text(text=f"You have chosen {query.data}", reply_markup=InlineKeyboardMarkup([InlineKeyboardButton("rates", callback_data="rates")]))
 
     if data == "more":
         await more(update, context)
+
     elif data == "reset":
         await reset(update, context)
 
+    else:
+        await rates(update,context)
+
+
 
 async def more(update: Update, context:ContextTypes.DEFAULT_TYPE) -> None:
+    keys = [InlineKeyboardButton(currency, callback_data=f"{currency}") for currency in moreCurrencies()] 
+    board = [InlineKeyboardButton(chr(letters), callback_data=f"{letters}") for letters in range(ord('A'), ord('Z'))]
 
     keyboard = [
-        [InlineKeyboardMarkup(callback_data=f"{more}")] for more in moreCurrencies()
+        board[i:i+8] for i in range(0, len(board))
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.callback_query.edit_message_text
+    moreCurrencyMarkup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text("Currency list", reply_markup=moreCurrencyMarkup)
 
 
-async def reset() -> None: 
+async def alphabet(update:Update, context:ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    data = query.data
+
+    if data in moreCurrencies:
+        filteredCurrencies += data
+
+
     return
+
+async def reset(update: Update, context:ContextTypes.DEFAULT_TYPE) -> None: 
+    await update.callback_query.edit_message_text("RESET")
+
+
+
+
 
 
 
@@ -83,6 +105,7 @@ def buildBot():
     
     application.add_handler(CommandHandler("rates", rates))
     application.add_handler(CallbackQueryHandler(button))
+    application.add_handler(CallbackQueryHandler(alphabet))
     application.add_handler(CommandHandler("help", help_command))
 
     # continuously makes request to tg servers for updates
